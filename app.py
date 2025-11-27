@@ -369,21 +369,30 @@ At the end, produce a polished report obeying the requested format.
 """
 
     try:
+        # Try new LangGraph API (model= keyword)
         return create_react_agent(
             model=llm,
             tools=tools,
             state_modifier=system_instructions,
         )
     except TypeError:
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", system_instructions),
-                ("human", "Question: {input}"),
-                MessagesPlaceholder("messages"),
-            ]
-        )
-
-        return create_react_agent(model=llm, tools=tools, prompt=prompt)
+        try:
+            # Fallback: try positional llm argument
+            return create_react_agent(
+                llm,
+                tools,
+                state_modifier=system_instructions,
+            )
+        except TypeError:
+            # Final fallback: use prompt-based creation
+            prompt = ChatPromptTemplate.from_messages(
+                [
+                    ("system", system_instructions),
+                    ("human", "Question: {input}"),
+                    MessagesPlaceholder("messages"),
+                ]
+            )
+            return create_react_agent(llm, tools, prompt=prompt)
 
 
 def _extract_text(messages: Iterable[Any]) -> str:
