@@ -13,7 +13,7 @@ try:
 except ImportError:
     _HAS_CREATE_REACT_AGENT = False
 
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain_community.tools import DuckDuckGoSearchRun, WikipediaQueryRun
 from langchain_community.utilities import WikipediaAPIWrapper
 
@@ -351,48 +351,57 @@ def get_agent():
     tools = get_tools()
     if not _HAS_CREATE_REACT_AGENT:
         return None
-    tool_descriptions = "\n".join(
-        f"- {tool.name}: {getattr(tool, 'description', 'No description provided.')}"
-        for tool in tools
+
+    # Build ReAct-style prompt with all required variables
+    prompt_template = """You are an expert research assistant for a B.Tech AI & DS student.
+
+You have access to the following tools:
+{tools}
+
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final answer
+Final Answer: the final answer to the original input question
+
+Begin!
+
+Question: {{input}}
+Thought:{{agent_scratchpad}}"""
+
+    prompt = PromptTemplate(
+        input_variables=["tools", "tool_names", "input", "agent_scratchpad"],
+        template=prompt_template,
     )
-    tool_names = ", ".join(tool.name for tool in tools)
 
-    system_instructions = f"""You are an expert research assistant for a B.Tech AI & DS student.
+    tool_strings = "\n".join(
+        [f"{tool.name}: {getattr(tool, 'description', 'No description provided.')}" for tool in tools]
+    )
+    tool_names = ", ".join([tool.name for tool in tools])
 
-Always reason step by step, citing tools when used. Available tools:
-{tool_descriptions}
-
-When you take an action, follow the Thought / Action / Action Input / Observation protocol.
-Only choose from: {tool_names}
-
-At the end, produce a polished report obeying the requested format.
-"""
+    prompt = prompt.partial(tools=tool_strings, tool_names=tool_names)
 
     try:
-        # Try new LangGraph API (model= keyword)
         return create_react_agent(
             model=llm,
             tools=tools,
-            state_modifier=system_instructions,
+            prompt=prompt,
         )
     except TypeError:
         try:
-            # Fallback: try positional llm argument
             return create_react_agent(
                 llm,
                 tools,
-                state_modifier=system_instructions,
+                prompt=prompt,
             )
-        except TypeError:
-            # Final fallback: use prompt-based creation
-            prompt = ChatPromptTemplate.from_messages(
-                [
-                    ("system", system_instructions),
-                    ("human", "Question: {input}"),
-                    MessagesPlaceholder("messages"),
-                ]
-            )
-            return create_react_agent(llm, tools, prompt=prompt)
+        except Exception:
+            # Fallback: use agent without ReAct, just call LLM directly
+            return None
 
 
 def _extract_text(messages: Iterable[Any]) -> str:
