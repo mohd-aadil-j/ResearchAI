@@ -9,6 +9,10 @@ AI-powered research report generator using Groq LLM, LangChain, and Streamlit.
 - Download clean PDF reports
 - Modern, attractive Streamlit UI
 
+## Vist
+
+click --> https://rescearehr.streamlit.app/
+
 ## Quick Start
 
 1. **Clone the repo:**
