@@ -9,5 +9,6 @@ langchain-groq
 
 duckduckgo-search
 wikipedia
+ddgs
 
 fpdf
