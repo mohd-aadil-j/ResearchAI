@@ -1,0 +1,12 @@
+streamlit
+google-generativeai
+python-dotenv
+
+langchain-core
+langchain-community
+langchain-google-genai
+
+duckduckgo-search
+wikipedia
+
+fpdf
